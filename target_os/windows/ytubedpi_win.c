@@ -1,7 +1,7 @@
 ﻿// ytubedpi.cpp: определяет точку входа для приложения.
 //
 
-#include "ytubedpi.h"
+#include "ytubedpi_win.h"
 #include "windivert.h"
 #include <stdio.h>
 #include <signal.h>
@@ -11,7 +11,7 @@
 /**
  * Have to be global because they are passed to signal handler.
  */
-static HANDLE g_filters[W2E_MAX_FILTERS];
+static HANDLE g_filters[YT_MAX_FILTERS];
 static int g_filter_num = 0;
 
 static volatile int loop_stop = 0;
@@ -221,7 +221,7 @@ static void _yt__main_loop(HANDLE w_filter)
     PVOID					data;
     UINT					len_data;
 
-    static uint8_t			pkt[W2E_MAX_PACKET_SIZE] = { 0 };
+    static uint8_t			pkt[YT_MAX_PACKET_SIZE] = { 0 };
 
 
     printf("Main loop operating\n");

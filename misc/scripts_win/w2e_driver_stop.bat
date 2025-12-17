@@ -1,4 +1,4 @@
-:: Stop WinDivert driver
+﻿:: Stop WinDivert driver
 
 @mode con: cols=100 lines=20
 @title Stop WinDivert
