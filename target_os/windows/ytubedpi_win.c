@@ -20,7 +20,7 @@ static volatile int loop_stop = 0;
 /**
  * Check if running as Administrator.
  */
-static BOOL _yt_client__is_admin()
+static BOOL _yt__is_admin()
 {
     BOOL fIsElevated = FALSE;
     HANDLE hToken = NULL;
@@ -55,7 +55,7 @@ cleanup:
 /**
  * WinDivert initialization.
  */
-static HANDLE _yt_client__init(char* filter, UINT64 flags)
+static HANDLE _yt__init(char* filter, UINT64 flags)
 {
     LPTSTR errormessage = NULL;
     DWORD errorcode = 0;
@@ -129,7 +129,7 @@ static HANDLE _yt_client__init(char* filter, UINT64 flags)
 /**
  * WinDivert deinitialization.
  */
-static int _yt_client__deinit(HANDLE handle)
+static int _yt__deinit(HANDLE handle)
 {
     if (handle)
     {
@@ -144,11 +144,11 @@ static int _yt_client__deinit(HANDLE handle)
 /**
  * WinDivert deinitialization of all filters.
  */
-static void _yt_client__deinit_all(HANDLE* filters, int filter_num)
+static void _yt__deinit_all(HANDLE* filters, int filter_num)
 {
     for (int i = 0; i < filter_num; i++)
     {
-        _yt_client__deinit(filters[i]);
+        _yt__deinit(filters[i]);
     }
 }
 
@@ -156,13 +156,13 @@ static void _yt_client__deinit_all(HANDLE* filters, int filter_num)
 /**
  * SIGINT handler.
  */
-static void _yt_client__sigint_handler(int sig)
+static void _yt__sigint_handler(int sig)
 {
     (void)sig;
 
     loop_stop = 1;
     Sleep(1000);
-    _yt_client__deinit_all(g_filters, g_filter_num);
+    _yt__deinit_all(g_filters, g_filter_num);
     exit(EXIT_SUCCESS);
 }
 
@@ -170,7 +170,7 @@ static void _yt_client__sigint_handler(int sig)
 /**
  * Send WinDivert packet.
  */
-static BOOL _yt_client__pkt_send(HANDLE handle, const VOID* pPacket, UINT packetLen, UINT* pSendLen, const WINDIVERT_ADDRESS* pAddr)
+static BOOL _yt__pkt_send(HANDLE handle, const VOID* pPacket, UINT packetLen, UINT* pSendLen, const WINDIVERT_ADDRESS* pAddr)
 {
     DWORD errorcode = 0;
 
@@ -258,11 +258,22 @@ static void _yt__main_loop(HANDLE w_filter)
                  * Modification
                  */
                 // @todo
-
+#if 0
                 //yt_dbg_dump(len_data, (uint8_t *)data);
+                for (int i = 0; i < 8; i++)
+                {
+                    printf("%c", ((uint8_t *)data)[31 * 4 + i]);
+                }
+                printf("\n");
 
+                if (memcmp(&(((uint8_t*)data)[31 * 4 + 1]), "i.ytimg", 7) == 0)
+                {
+                    printf("+\n");
+                    //((uint8_t*)data)[31 * 4 + 1] = "I";
+                }
+#endif // 0
                 /** Send packet */
-                _yt_client__pkt_send(w_filter, pkt, len_recv, NULL, &addr);
+                _yt__pkt_send(w_filter, pkt, len_recv, NULL, &addr);
             }
         }
         else
@@ -298,7 +309,7 @@ int main(int argc, char* argv[])
 {
     HANDLE w_filter = NULL;
 
-    if (!_yt_client__is_admin())
+    if (!_yt__is_admin())
     {
         printf("You need to run W2E Client as Administrator. Press Enter to terminate.\n");
         (void)getchar();
@@ -308,7 +319,7 @@ int main(int argc, char* argv[])
     /**
      * SIGINT handler.
      */
-    signal(SIGINT, _yt_client__sigint_handler);
+    signal(SIGINT, _yt__sigint_handler);
 
     /**
      * Filters initialization.
@@ -318,14 +329,26 @@ int main(int argc, char* argv[])
      * tcp.DstPort == 443   | HTTPS
      * tcp.Payload[0] == 22 | TLS Handshake
      * tcp.Payload[5] ==  1 | TLS Client Hello
+     * 
+     * www.youtube.com
      * tcp.Payload32[31] == 0x0f777777 | server name length, "www"
      * tcp.Payload32[32] == 0x2e796f75 | ".you"
+     * 
+     * i.ytimg.com
+     * tcp.Payload32[31] == 0x0b692e79 | server name length, "i.y"
+     * tcp.Payload32[32] == 0x74696d67 | "timg"
+     * 
+     * yt3.ggpht.com
+     * tcp.Payload32[31] == 0x0d797433 | server name length, "yt3"
+     * tcp.Payload32[32] == 0x2e676770 | ".ggp"
      */
-    g_filters[g_filter_num] = _yt_client__init(
+    g_filters[g_filter_num] = _yt__init(
         "outbound and !loopback and (tcp.DstPort == 443 and tcp.Payload[0] == 22 and tcp.Payload[5] == 1"
-        " and tcp.Payload32[31] == 0x0f777777"
-        " and tcp.Payload32[32] == 0x2e796f75"
-        ")",
+        " and ("
+           " (tcp.Payload32[31] == 0x0f777777 and tcp.Payload32[32] == 0x2e796f75)"
+        " or (tcp.Payload32[31] == 0x0b692e79 and tcp.Payload32[32] == 0x74696d67)"
+        " or (tcp.Payload32[31] == 0x0d797433 and tcp.Payload32[32] == 0x2e676770)"
+        "))",
         0);
     w_filter = g_filters[g_filter_num];
     g_filter_num++;

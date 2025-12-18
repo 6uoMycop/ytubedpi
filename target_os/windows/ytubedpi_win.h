@@ -1,5 +1,5 @@
-﻿#ifndef __YT_CLIENT_H
-#define __YT_CLIENT_H
+﻿#ifndef __YT_WIN_H
+#define __YT_WIN_H
 
 #ifndef YT_MAX_FILTERS
 #define YT_MAX_FILTERS 1
@@ -15,4 +15,4 @@
             printf("\n"); \
         } while (0)
 
-#endif // __YT_CLIENT_H
+#endif // __YT_WIN_H
